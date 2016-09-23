@@ -145,22 +145,42 @@ def get_cluster_group(theta_max, rho_max, thetas, rhos, clusters) :
 
     ok_thetas = []
     for th in thetas :
-        if th > (theta_max-th_window) and th < (theta_max+th_window) :
+        th = np.rad2deg(th)
+        if th > (np.rad2deg(theta_max)-th_window) and th < (np.rad2deg(theta_max)+th_window) :
             ok_thetas.append(th)
     ok_rhos = []
     for rh in rhos :
         if rh > (rho_max-rh_window) and rh < (rho_max+rh_window) :
             ok_rhos.append(rh)
 
+    print ok_thetas
+
+
     out_clusters = []
-    for icluster, cl in clusters :
+    idx_to_remove = []
+    for icluster, cl in enumerate(clusters) :
         # get the hough line for this cluster
         xcl = cl.x()
         ycl = cl.y()
         for th in ok_thetas :
-            rho_check = round(x*cos_t[th] + y*sin_t[th]) + diag_len
+            th = np.deg2rad(th)
+            print th
+            rho_check = round(xcl*cos_t[th] + ycl*sin_t[th]) + diag_len
+            print rho_check
             if rho_check > (rho_max-rh_window) and rh < (rho_max+rh_window) :
+                print "INSIDE WINDOW"
                 out_clusters.append(cl)
+                idx_to_remove.append(icluster)
+    print "rho window: %.2f < %.2f < %.2f"%(rho_max-rh_window, rho_max, rho_max+rh_window)
+    print "the window: %.2f < %.2f < %.2f"%(np.rad2deg(theta_max)-th_window, np.rad2deg(theta_max), np.rad2deg(theta_max)+th_window)
+    sys.exit()
+    tmp_cl = []
+    for icl, cl in enumerate(clusters) :
+        if icl in idx_to_remove : continue
+        tmp_cl.append(cl)
+    clusters = tmp_cl
+
+    return out_clusters, clusters
         
         
     
@@ -193,10 +213,9 @@ def main() :
 
         print "%d : (theta, rho) = (%.2f,%.2f)"%(max_idx, np.rad2deg(theta), rho)
 
-        track_clusters = get_cluster_group(theta, rho, thetas, rhos, clusters)
-
-        
-
+        track_clusters, clusters = get_cluster_group(theta, rho, thetas, rhos, clusters)
+        print len(track_clusters)
+        track_cluster_groups.append(track_clusters)
         sys.exit()
 
 
