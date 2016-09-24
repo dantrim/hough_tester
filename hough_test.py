@@ -41,12 +41,23 @@ def make_clusters() :
     offset_0 = 38
     slope_0 = 0.12
 
+    offset_1 = 10
+    slope_1 = 0.5
+
     np.random.seed(5)
     x = np.linspace(0,100,30)
-    y0 = slope_0 * (x - offset_0) + np.random.normal(0,0.005,30)
+    y0 = slope_0 * (x - offset_0) + np.random.normal(0,0.1,30)
     x_tmp, y_tmp = clusters_in_chamber(x, y0)
 
+
     out_clusters = []
+    for i in xrange(len(x_tmp)) :
+        c = Cluster(x_tmp[i], y_tmp[i])
+        out_clusters.append(c)
+
+    x = np.linspace(0,100,100)
+    y1 = slope_1 * (x - offset_1) + np.random.normal(0,0.12,100)
+    x_tmp, y_tmp = clusters_in_chamber(x, y1)
     for i in xrange(len(x_tmp)) :
         c = Cluster(x_tmp[i], y_tmp[i])
         out_clusters.append(c)
@@ -67,7 +78,7 @@ def draw_chamber_tracks(clusters) :
     for cl in clusters :
         x = cl.x()
         y = cl.y()
-        print "%d  %.2f   %.2f"%(g.GetN(), x, y)
+        #print "%d  %.2f   %.2f"%(g.GetN(), x, y)
         g.SetPoint(g.GetN(), float(x), float(y))#, 1)
     g.SetMarkerStyle(20)
     g.SetMarkerColor(r.kBlue)
@@ -113,16 +124,19 @@ def build_accumulator(clusters) :
             rho = round(x*cos_t[t_idx] + y*sin_t[t_idx]) + diag_len
             accumulator[rho, t_idx] += 1
 
-    draw_accumulator(accumulator)
 
     return accumulator, thetas, rhos
 
 def get_cluster_group(theta_max, rho_max, thetas, rhos, clusters) :
 
     print "get_cluster_group"
+    print "in clusters size: %d"%len(clusters)
 
-    th_window = 5 #degrees
-    rh_window = 10
+    th_window = 10 #degrees
+    rh_window = 20
+
+    th_inner = 5
+    rh_inner = 5
 
     
     x_values = [cl.x() for cl in clusters]
@@ -153,9 +167,6 @@ def get_cluster_group(theta_max, rho_max, thetas, rhos, clusters) :
         if rh > (rho_max-rh_window) and rh < (rho_max+rh_window) :
             ok_rhos.append(rh)
 
-    print ok_thetas
-
-
     out_clusters = []
     idx_to_remove = []
     for icluster, cl in enumerate(clusters) :
@@ -164,28 +175,61 @@ def get_cluster_group(theta_max, rho_max, thetas, rhos, clusters) :
         ycl = cl.y()
         for th in ok_thetas :
             th = np.deg2rad(th)
-            print th
-            rho_check = round(xcl*cos_t[th] + ycl*sin_t[th]) + diag_len
-            print rho_check
-            if rho_check > (rho_max-rh_window) and rh < (rho_max+rh_window) :
-                print "INSIDE WINDOW"
+            rho_check = round(xcl*cos_t[th] + ycl*sin_t[th]) + 0.5*diag_len
+            #print "rho : %.2f"%rho_check
+            lower = rho_max - rh_window
+            upper = rho_max + rh_window
+            if (rho_check > lower) and (rho_check < upper) :
+                #print "INSIDE WINDOW"
                 out_clusters.append(cl)
                 idx_to_remove.append(icluster)
+                break # move to next cluster
     print "rho window: %.2f < %.2f < %.2f"%(rho_max-rh_window, rho_max, rho_max+rh_window)
     print "the window: %.2f < %.2f < %.2f"%(np.rad2deg(theta_max)-th_window, np.rad2deg(theta_max), np.rad2deg(theta_max)+th_window)
-    sys.exit()
     tmp_cl = []
     for icl, cl in enumerate(clusters) :
         if icl in idx_to_remove : continue
         tmp_cl.append(cl)
     clusters = tmp_cl
 
+    print "out_clusters size: %d"%len(out_clusters)
+    print "clusters size: %d"%len(clusters)
+
     return out_clusters, clusters
         
         
     
-    
+def draw_tracks(track_groups) :
 
+    c = r.TCanvas("c_tr", "", 1600,600)
+    c.cd()
+    hax = r.TH1F("hax2", "", 100, 0, 100)
+    hax.GetYaxis().SetRangeUser(0,5)
+    hax.Draw("axis")
+    lines = []
+
+    
+    print "track_groups : %d"%len(track_groups)
+    for cl_group in track_groups :
+        h = r.TH1F("hfit","",100,0,100)
+        h.SetMarkerStyle(20)
+        h.SetMarkerSize(1.2)
+        h.GetYaxis().SetRangeUser(0,5)
+        for cl in cl_group :
+            x = cl.x()
+            y = cl.y()
+            h.SetBinContent(int(x),float(y))
+        h.Draw("p")
+        f = r.TF1("f", "pol1")
+        h.Fit(f)
+        lines.append(f)
+
+    for fit_line in lines :
+        fit_line.Draw("same")
+    c.SaveAs("tracks.eps")
+        
+
+            
 def main() :
 
     # get the clusters
@@ -198,13 +242,14 @@ def main() :
 
     # fill the accumulator
     accumulator, thetas, rhos = build_accumulator(clusters)
+    draw_accumulator(accumulator)
 
     # get the track-associated clusters
     track_cluster_groups = []
     while True :
         thetas = [th+(3.14/2) for th in thetas] 
-        print thetas
-        print rhos
+        #print thetas
+        #print rhos
 
         # get the area of maximum occupancy
         max_idx = np.argmax(accumulator)
@@ -214,9 +259,14 @@ def main() :
         print "%d : (theta, rho) = (%.2f,%.2f)"%(max_idx, np.rad2deg(theta), rho)
 
         track_clusters, clusters = get_cluster_group(theta, rho, thetas, rhos, clusters)
-        print len(track_clusters)
+        if len(track_clusters) < 6 : break
+
+        print "appending track clusters"
         track_cluster_groups.append(track_clusters)
-        sys.exit()
+        accumulator, thetas, rhos = build_accumulator(clusters)
+        #sys.exit()
+
+    draw_tracks(track_cluster_groups)
 
 
 #####################################################################
