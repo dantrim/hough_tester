@@ -120,7 +120,8 @@ def draw_chamber_tracks(clusters) :
 def draw_accumulator(accumulator) :
     
     fig = plt.figure()
-    plt.imshow(accumulator, origin="lower", cmap="jet", interpolation="nearest", aspect="auto")
+    plt.axis([-90,90,0,286])
+    plt.imshow(accumulator, origin="lower", cmap="jet", interpolation="nearest", aspect="auto",extent=[-90,90,0,286])
     fig.savefig("accumulator.eps")
 
 def build_accumulator(clusters) :
@@ -412,6 +413,7 @@ def main() :
     track_cluster_groups = []
     is_first = True
     ContinueBuildingTracks = True
+    draw_i = 0
     while ContinueBuildingTracks :
         thetas = [th+(3.14/2) for th in thetas] 
         #print thetas
@@ -438,7 +440,9 @@ def main() :
             track_cluster_groups.append(track_clusters)
         accumulator, thetas, rhos = build_accumulator(clusters)
         #draw_accumulator(accumulator)
-        #sys.exit()
+        #draw_i += 1
+        #if draw_i == 4 : 
+        #    sys.exit()
         if len(track_clusters) < 4 :
             ContinueBuildingTracks = False
 
