@@ -79,6 +79,7 @@ def make_clusters() :
         c = Cluster(x_tmp[i], y_tmp[i])
         out_clusters.append(c)
 
+    #x = np.linspace(0,70,23)
     x = np.linspace(55,70,13)
     y3 = slope_3 * (x - offset_3) + np.random.normal(0, 0.12,13) + 2
     x_tmp, y_tmp = clusters_in_chamber(x, y3)
@@ -86,8 +87,8 @@ def make_clusters() :
         c = Cluster(x_tmp[i], y_tmp[i])
         out_clusters.append(c)
     
-    x = np.linspace(15,18,4)
-    y4 = slope_4 * (x - offset_4) + np.random.normal(0, 0.12,4)
+    x = np.linspace(15,18,6)
+    y4 = slope_4 * (x - offset_4) + np.random.normal(0, 0.12,6)
     x_tmp, y_tmp = clusters_in_chamber(x, y4)
     for i in xrange(len(x_tmp)) :
         c = Cluster(x_tmp[i], y_tmp[i])
@@ -206,7 +207,7 @@ def chi2_ok(track_clusters, cluster_to_add) :
     #elif ndf_0 > 0 :
     #    if (chi2_1/ndf_1)/(chi2_0/ndf_0) > 4 :
     #        return False
-    elif chi2_1/ndf_1 > 0.05 :
+    elif chi2_1/ndf_1 > 0.06 :
         print "FALSE: %.4f %d %d"%(chi2_1/ndf_1,ndf_0, ndf_1)
         #print "FALSE: %d -- %.4f"%(ndf_0, (chi2_1/ndf_1)/(chi2_0/ndf_0))#  -- %.4f"%(ndf_0,(chi2_0/ndf_0)/(chi2_1/ndf_1))
         return False
@@ -265,6 +266,7 @@ def get_cluster_group(theta_max, rho_max, thetas, rhos, clusters, add_half=True)
     for icluster, cl in enumerate(clusters) :
         xcl = cl.x()
         ycl = cl.y()
+        if not (ycl > 0.2 and ycl < 4.8) : continue
         for th in thetas :
             if th == theta_max :
                 if add_half :
@@ -282,6 +284,8 @@ def get_cluster_group(theta_max, rho_max, thetas, rhos, clusters, add_half=True)
                         out_cl.append(cl)
                         idx_to_remove.append(icluster)
                         break # move to next cluster
+                    else :
+                        print "skipping cluster (%.2f,%.2f)"%(xcl,ycl)
                     #else :
                     #    out_clusters.append(cl)
                     #    idx_to_remove.append(icluster)
